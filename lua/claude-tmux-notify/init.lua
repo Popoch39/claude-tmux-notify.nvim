@@ -15,6 +15,7 @@ local uv = vim.uv or vim.loop
 ---@class ClaudeTmuxNotifyConfig
 ---@field cache_file string?            Path to the JSONL event file (defaults to $XDG_CACHE_HOME/claude-tmux-notify.jsonl)
 ---@field poll_interval integer         fs_poll interval in ms (default 1000)
+---@field max_cache_size integer        Truncate the cache file at startup if it exceeds this many bytes; 0 disables (default 1 MiB)
 ---@field suppress_focused boolean      Skip toast if the event's tmux window is currently focused (default true)
 ---@field claude_settings string        Path to Claude Code settings.json (for :ClaudeTmuxNotifyInstallHook)
 ---@field events table<string, ClaudeTmuxNotifyEventOpts>
@@ -23,6 +24,7 @@ local uv = vim.uv or vim.loop
 local defaults = {
   cache_file = nil,
   poll_interval = 1000,
+  max_cache_size = 1024 * 1024, -- 1 MiB; 0 disables
   suppress_focused = true,
   claude_settings = vim.fn.expand("~/.claude/settings.json"),
   events = {
@@ -147,8 +149,16 @@ function M.start()
   local path = resolve_cache_file()
   pcall(vim.fn.writefile, {}, path, "a") -- ensure file exists (no-op append)
 
-  -- Begin at EOF: ignore any backlog written while nvim was closed.
+  -- Bound disk growth: the file is append-only and we ignore backlog anyway, so
+  -- if it has grown past max_cache_size, truncate it now. Cheap and safe — the
+  -- offset-reset in read_new() handles concurrent nvim instances seeing a shrink.
   local st = uv.fs_stat(path)
+  if st and M.config.max_cache_size and M.config.max_cache_size > 0 and st.size > M.config.max_cache_size then
+    pcall(vim.fn.writefile, {}, path) -- truncate to 0
+    st = uv.fs_stat(path)
+  end
+
+  -- Begin at EOF: ignore any backlog written while nvim was closed.
   state.offset = st and st.size or 0
 
   local poll = uv.new_fs_poll()

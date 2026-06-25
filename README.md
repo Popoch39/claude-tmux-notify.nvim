@@ -118,6 +118,10 @@ require("claude-tmux-notify").setup({
   -- How often (ms) to poll the cache file for new events.
   poll_interval = 1000,
 
+  -- The cache file is append-only. At startup, if it exceeds this many bytes,
+  -- it is truncated (safe — the backlog is ignored anyway). 0 disables.
+  max_cache_size = 1024 * 1024, -- 1 MiB
+
   -- Skip the toast if the waiting Claude is in the tmux window you're focused on.
   suppress_focused = true,
 
