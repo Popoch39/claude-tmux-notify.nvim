@@ -9,7 +9,7 @@ If you run several Claude sessions across tmux windows and work in Neovim, you
 no longer have to keep switching windows to check whether one is blocked on you.
 
 ```
-⏳ Claude — 2:api-server
+Claude — 2:api-server
 Claude needs your permission to run a command
 ```
 
